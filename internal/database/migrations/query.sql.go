@@ -3,7 +3,7 @@
 //   sqlc v1.17.2
 // source: query.sql
 
-package database
+package migrations
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func (q *Queries) GetOneProduct(ctx context.Context, id int64) (Product, error) 
 
 const listProducts = `-- name: ListProducts :many
 SELECT id, title, description, created FROM products
-ORDER BY name
+ORDER BY title
 `
 
 func (q *Queries) ListProducts(ctx context.Context) ([]Product, error) {

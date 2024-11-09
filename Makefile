@@ -7,7 +7,10 @@ docker-down:
 	docker compose down
 
 migrate-up: 
-	cd internal/schema && goose mysql ${MYSQL_DSN} up
+	cd internal/database/schema && goose mysql ${MYSQL_DSN} up
 
 migrate-down:
-	cd internal/schema && goose mysql ${MYSQL_DSN} down
+	cd internal/database/schema && goose mysql ${MYSQL_DSN} down
+
+sqlc:
+	sqlc generate

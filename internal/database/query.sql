@@ -4,7 +4,7 @@ WHERE id = ? LIMIT 1;
 
 -- name: ListProducts :many
 SELECT * FROM products
-ORDER BY name;
+ORDER BY title;
 
 -- name: CreateProduct :execresult
 INSERT INTO products (

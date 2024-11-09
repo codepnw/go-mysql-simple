@@ -1,38 +1,26 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"os"
 
 	"github.com/codepnw/go-mysql-simple/internal/database"
-	"github.com/codepnw/go-mysql-simple/internal/handlers"
+	"github.com/codepnw/go-mysql-simple/internal/routes"
 	"github.com/gin-gonic/gin"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
 )
 
-func main() {
-	godotenv.Load("dev.env")
+const envFile = "dev.env"
 
-	conn, err := sql.Open("mysql", os.Getenv("MYSQL_DSN"))
-	if err != nil {
+func main() {
+	if err := godotenv.Load(envFile); err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
-
-	db := database.New(conn)
 
 	r := gin.Default()
-	g := r.Group("/products")
+	conn := database.ConnectDatabase(os.Getenv("MYSQL_DSN"))
 
-	handler := handlers.NewProducts(db)
+	routes.NewRoutes(r, conn)
 
-	g.POST("/", handler.CreateProduct)
-	g.GET("/", handler.GetProducts)
-	g.GET("/:id", handler.GetProduct)
-	g.PATCH("/:id", handler.UpdateProduct)
-	g.DELETE("/:id", handler.DeleteProduct)
-
-	r.Run(":8080")
+	r.Run(":" + os.Getenv("APP_PORT"))
 }

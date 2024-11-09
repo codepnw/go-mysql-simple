@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/codepnw/go-mysql-simple/internal/database"
+	"github.com/codepnw/go-mysql-simple/internal/database/migrations"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,42 +18,56 @@ type IProductHandler interface {
 }
 
 type productHandler struct {
-	db *database.Queries
+	db *migrations.Queries
 }
 
-type productReq struct {
+type ProductReq struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
 
-func NewProducts(db *database.Queries) IProductHandler {
+func NewProducts(db *migrations.Queries) IProductHandler {
 	return &productHandler{db: db}
 }
 
 func (h *productHandler) CreateProduct(c *gin.Context) {
-	request := productReq{}
+	request := &ProductReq{}
 
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err := c.ShouldBindJSON(request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	product, err := h.db.CreateProduct(context.Background(), database.CreateProductParams{
+	req := migrations.CreateProductParams{
 		Title:       request.Title,
 		Description: request.Description,
-	})
+	}
+
+	product, err := h.db.CreateProduct(context.Background(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, product)
+	id, err := product.LastInsertId()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	p, err := h.db.GetOneProduct(context.Background(), int64(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "product created", "data": p})
 }
 
 func (h *productHandler) GetProducts(c *gin.Context) {
 	products, err := h.db.ListProducts(context.Background())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, products)
@@ -64,7 +78,7 @@ func (h *productHandler) GetProduct(c *gin.Context) {
 
 	product, err := h.db.GetOneProduct(context.Background(), int64(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -73,21 +87,26 @@ func (h *productHandler) GetProduct(c *gin.Context) {
 
 func (h *productHandler) UpdateProduct(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	request := productReq{}
+	request := &ProductReq{}
 
-	err := h.db.UpdateProduct(context.Background(), database.UpdateProductParams{
+	if err := c.ShouldBindJSON(request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.db.UpdateProduct(context.Background(), migrations.UpdateProductParams{
 		Title:       request.Title,
 		Description: request.Description,
-		ID: int64(id),
+		ID:          int64(id),
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	product, err := h.db.GetOneProduct(context.Background(), int64(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -99,7 +118,7 @@ func (h *productHandler) DeleteProduct(c *gin.Context) {
 
 	err := h.db.DeleteProduct(context.Background(), int64(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
